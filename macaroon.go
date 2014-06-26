@@ -36,48 +36,55 @@ type Caveat struct {
 	verificationId []byte
 }
 
-// macaroonJSON defines the JSON format for macaroons.
-type macaroonJSON struct {
+// MacaroonDoc defines a serializable document for macaroons.
+type MacaroonDoc struct {
 	Caveats    []Caveat `json:"caveats"`
 	Location   string   `json:"location"`
 	Identifier string   `json:"identifier"`
 	Signature  string   `json:"signature"` // hex-encoded
 }
 
-// caveatJSON defines the JSON format for caveats within a macaroon.
-type caveatJSON struct {
+// CaveatDoc defines a serializable document for caveats within a macaroon.
+type CaveatDoc struct {
 	Location string `json:"location"`
 	CID      string `json:"cid"`
 	VID      string `json:"vid"`
 }
 
-// MarshalJSON implements json.Marshaler.
-func (cav *Caveat) MarshalJSON() ([]byte, error) {
-
-	cavJSON := caveatJSON{
+func (cav *Caveat) MarshalDoc() *CaveatDoc {
+	return &CaveatDoc{
 		Location: cav.location,
 		CID:      cav.caveatId,
 		VID:      hex.EncodeToString(cav.verificationId),
 	}
-	data, err := json.Marshal(cavJSON)
+}
+
+// MarshalJSON implements json.Marshaler.
+func (cav *Caveat) MarshalJSON() ([]byte, error) {
+	data, err := json.Marshal(cav.MarshalDoc())
 	if err != nil {
 		return nil, fmt.Errorf("cannot marshal json data: %v", err)
 	}
 	return data, nil
 }
 
-// unmarshalJSON implements json.Unmarshaler.
+// UnmarshalJSON implements json.Unmarshaler.
 func (cav *Caveat) UnmarshalJSON(jsonData []byte) error {
-	var cavJSON caveatJSON
-	err := json.Unmarshal(jsonData, &cavJSON)
-	cav.location = cavJSON.Location
-	cav.caveatId = cavJSON.CID
+	var doc CaveatDoc
+	err := json.Unmarshal(jsonData, &doc)
 	if err != nil {
-		return fmt.Errorf("cannot decode caveat id %q: %v", cavJSON.CID, err)
+		return fmt.Errorf("cannot unmarshal json data: %v", doc.CID, err)
 	}
-	cav.verificationId, err = hex.DecodeString(cavJSON.VID)
+	return cav.UnmarshalDoc(&doc)
+}
+
+func (cav *Caveat) UnmarshalDoc(doc *CaveatDoc) error {
+	var err error
+	cav.location = doc.Location
+	cav.caveatId = doc.CID
+	cav.verificationId, err = hex.DecodeString(doc.VID)
 	if err != nil {
-		return fmt.Errorf("cannot decode verfification id %q: %v", cavJSON.VID, err)
+		return fmt.Errorf("cannot decode verfification id %q: %v", doc.VID, err)
 	}
 	return nil
 }
@@ -271,15 +278,18 @@ func (m *Macaroon) verify(rootSig []byte, rootKey []byte, check func(caveat stri
 	return true, nil
 }
 
-// MarshalJSON implements json.Marshaler.
-func (m *Macaroon) MarshalJSON() ([]byte, error) {
-	mjson := macaroonJSON{
+func (m *Macaroon) MarshalDoc() *MacaroonDoc {
+	return &MacaroonDoc{
 		Location:   m.Location(),
 		Identifier: m.id,
 		Signature:  hex.EncodeToString(m.sig),
 		Caveats:    m.caveats,
 	}
-	data, err := json.Marshal(mjson)
+}
+
+// MarshalJSON implements json.Marshaler.
+func (m *Macaroon) MarshalJSON() ([]byte, error) {
+	data, err := json.Marshal(m.MarshalDoc())
 	if err != nil {
 		return nil, fmt.Errorf("cannot marshal json data: %v", err)
 	}
@@ -288,18 +298,23 @@ func (m *Macaroon) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements json.Unmarshaler.
 func (m *Macaroon) UnmarshalJSON(jsonData []byte) error {
-	var mjson macaroonJSON
+	var mjson MacaroonDoc
 	err := json.Unmarshal(jsonData, &mjson)
 	if err != nil {
 		return fmt.Errorf("cannot unmarshal json data: %v", err)
 	}
-	m.location = mjson.Location
-	m.id = mjson.Identifier
-	m.sig, err = hex.DecodeString(mjson.Signature)
+	return m.UnmarshalDoc(&mjson)
+}
+
+func (m *Macaroon) UnmarshalDoc(doc *MacaroonDoc) error {
+	var err error
+	m.location = doc.Location
+	m.id = doc.Identifier
+	m.sig, err = hex.DecodeString(doc.Signature)
 	if err != nil {
 		return fmt.Errorf("cannot decode macaroon signature %q: %v", m.sig, err)
 	}
-	m.caveats = mjson.Caveats
+	m.caveats = doc.Caveats
 	return nil
 }
 
