@@ -1,3 +1,7 @@
+# WARNING
+
+This project is an unmaintained fork. You should use [gopkg.in/macaroon.v1](https://gopkg.in/macaroon.v1).
+
 # macaroon
 --
     import "github.com/rogpeppe/macaroon"

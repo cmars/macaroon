@@ -1,3 +1,5 @@
+// This project is an unmaintained fork. You should use [gopkg.in/macaroon.v1](https://gopkg.in/macaroon.v1).
+//
 // The macaroon package implements macaroons as described in
 // the paper "Macaroons: Cookies with Contextual Caveats for
 // Decentralized Authorization in the Cloud"
